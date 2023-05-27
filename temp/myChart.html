@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <title></title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+    body {
+      background-color: white;
+      /* Default background color */
+      color: black;
+      /* Default text color */
+    }
+
+    body.dark-mode {
+      background-color: #191919;
+      /* Dark mode background color */
+    }
+    </style>
+    <style>
+    #darkModeButton {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+    }
+    </style>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+  </head>
+
+  <body>
+    <canvas id="myChart"></canvas>
+    <script>
+    function deepenColor(hexColor, saturationFactor, lightnessFactor = 0.2) {
+      // Remove the leading '#' if present
+      const color = hexColor.replace('#', '');
+
+      // Convert the color to HSL components
+      const red = parseInt(color.substr(0, 2), 16);
+      const green = parseInt(color.substr(2, 2), 16);
+      const blue = parseInt(color.substr(4, 2), 16);
+
+      // Convert RGB to HSL
+      const hsl = rgbToHsl(red, green, blue);
+
+      // Adjust the saturation and lightness components
+      const deepSaturation = Math.min(1, hsl.s + saturationFactor);
+      const deepLightness = Math.max(0, hsl.l - lightnessFactor);
+
+      // Convert the deep HSL components back to RGB
+      const deepRgb = hslToRgb(hsl.h, deepSaturation, deepLightness);
+
+      // Convert the deep RGB components to a hex color code
+      const deepColor = `#${componentToHex(deepRgb.r)}${componentToHex(deepRgb.g)}${componentToHex(deepRgb.b)}`;
+
+      return deepColor;
+    }
+
+    // Function to convert RGB to HSL
+    function rgbToHsl(r, g, b) {
+      r /= 255;
+      g /= 255;
+      b /= 255;
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      let h, s, l = (max + min) / 2;
+
+      if (max === min) {
+        h = s = 0; // achromatic
+      } else {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+          case r:
+            h = (g - b) / d + (g < b ? 6 : 0);
+            break;
+          case g:
+            h = (b - r) / d + 2;
+            break;
+          case b:
+            h = (r - g) / d + 4;
+            break;
+        }
+        h /= 6;
+      }
+
+      return {
+        h,
+        s,
+        l
+      };
+    }
+
+    // Function to convert HSL to RGB
+    function hslToRgb(h, s, l) {
+      let r, g, b;
+
+      if (s === 0) {
+        r = g = b = l; // achromatic
+      } else {
+        function hue2rgb(p, q, t) {
+          if (t < 0) t += 1;
+          if (t > 1) t -= 1;
+          if (t < 1 / 6) return p + (q - p) * 6 * t;
+          if (t < 1 / 2) return q;
+          if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+          return p;
+        }
+
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1 / 3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1 / 3);
+      }
+
+      return {
+        r: Math.round(r * 255),
+        g: Math.round(g * 255),
+        b: Math.round(b * 255)
+      };
+    }
+
+    // Function to convert a color component to a two-digit hexadecimal representation
+    function componentToHex(c) {
+      const hex = c.toString(16);
+      return hex.length === 1 ? '0' + hex : hex;
+    }
+
+
+    var gridColor = ""
+    var fontColor = ""
+    var fontFamily = 'Tahoma'
+
+    function makeColorDarker(color) {
+      // Parse the color string to RGB values
+      if (typeof(Storage) !== "undefined") {
+        if (localStorage.getItem("darkmode")) {
+          if (localStorage.getItem("darkmode") == "on") {
+            var deepColor = deepenColor(color, 0.2, 0.4);
+            gridColor = "#696969"
+            fontColor = "#f8f8ff"
+            return deepColor;
+          } else {
+            var deepColor = deepenColor(color, 0.2, 0.3);
+            gridColor = "#696969"
+            fontColor = "#1a2421"
+            return deepColor;
+          }
+        } else {
+          if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            var deepColor = deepenColor(color, 0.2, 0.4);
+            gridColor = "#696969"
+            fontColor = "#f8f8ff"
+            return deepColor;
+          }
+        }
+      }
+
+    }
+
+    function locationHashChanged() {
+      //alert(location.hash)
+    }
+
+    //{"status":[{"name":"fun","color":"red","time":"55"}],"title":""}
+
+    window.onhashchange = locationHashChanged;
+    var hash = window.location.hash.substr(1);
+
+    var result = {};
+    var pairs = hash.split('&');
+
+    pairs.forEach(function(item) {
+      var parts = item.split('=');
+      var key = parts[0];
+      var value = decodeURIComponent(parts[1]);
+
+      if (value.startsWith('[') && value.endsWith(']')) {
+        var arrayValues = value.slice(1, -1).split(',').map(function(str) {
+          return str.trim().replace(/^'|'$/g, '');
+        });
+
+        result[key] = arrayValues.map(function(base64) {
+          return atob(base64);
+        });
+      } else {
+        result[key] = value;
+      }
+    });
+
+    var type = result.type
+    var title = ""
+    var type_title = ""
+
+    var mainArr = []
+    var inputArray = []
+
+    function calculateCumulativeSum(arrays) {
+      var result = {};
+      arrays.forEach(function(obj) {
+        var statusArray = obj.status;
+        var groupArray = obj.group[obj.group_name[0]];
+        statusArray.forEach(function(statusObj) {
+          if (statusObj.name in result) {
+            result[statusObj.name] += statusObj.time;
+          } else {
+            result[statusObj.name] = statusObj.time;
+          }
+        });
+        groupArray.forEach(function(groupObj) {
+          if (groupObj.name in result) {
+            result[groupObj.name] += groupObj.time;
+          } else {
+            result[groupObj.name] = groupObj.time;
+          }
+        });
+      });
+      return result;
+    }
+
+    function convertMinutesToHoursAndMinutes(minutes) {
+      var hours = Math.floor(minutes / 60); // Get the whole number of hours
+      var remainingMinutes = minutes % 60; // Get the remaining minutes
+      return hours + "h " + remainingMinutes + "m"
+    }
+    if (result.b64) {
+      var decodedHash = decodeURIComponent(atob(result.b64));
+      var jsonData = JSON.parse(decodedHash);
+      var wokeup_time = convertMinutesToHoursAndMinutes(jsonData.wokeup_time);
+      if (type === "d") {
+        var currentDate = new Date();
+        var year = currentDate.getFullYear();
+        var month = currentDate.getMonth() + 1;
+        var day = currentDate.getDate();
+        var formattedDate = year + '/' + month + '/' + day;
+        type_title = "Daily"
+        title = type_title + " Graph View of: Today"
+        //if (jsonData.date === formattedDate) {
+
+        //}
+      }
+    } else if (result.json) {
+      var decodedHash = decodeURIComponent(result.json);
+      var jsonData = JSON.parse(decodedHash);
+      var wokeup_time = jsonData.wokeup_time;
+      if (type === "d") {
+        var currentDate = new Date();
+        var year = currentDate.getFullYear();
+        var month = currentDate.getMonth() + 1;
+        var day = currentDate.getDate();
+        var formattedDate = year + '/' + month + '/' + day;
+        type_title = "Daily"
+        if (jsonData.date === formattedDate) {
+          title = type_title + " Graph View of: Today"
+        }
+      }
+    } else if (result.b64_group) {
+      mainArr = result.b64_group.reverse()
+
+      if (type === "w") {
+        mainArr = mainArr.slice(0, 7).reverse();
+        var firstElement = mainArr[0];
+        var lastElement = mainArr[mainArr.length - 1];
+        type_title = "Weekly"
+        title = type_title + " Graph View From: " + JSON.parse(firstElement).date + " To: " + JSON.parse(lastElement).date
+      } else if (type === "m") {
+        mainArr = mainArr.slice(0, 30).reverse();
+        var firstElement = mainArr[0];
+        var lastElement = mainArr[mainArr.length - 1];
+        var jsonData = JSON.parse(firstElement);
+        type_title = "Monthly"
+        title = type_title + " Graph View From: " + JSON.parse(firstElement).date + " To: " + JSON.parse(lastElement).date
+
+      }
+      for (let i = 0; i < mainArr.length; i++) {
+        inputArray.push(JSON.parse(mainArr[i]))
+      }
+      var cumulativeSums = calculateCumulativeSum(inputArray);
+      inputArray.forEach(function(obj) {
+        var statusArray = obj.status;
+        var groupArray = obj.group[obj.group_name[0]];
+        statusArray.forEach(function(statusObj) {
+          statusObj.time = cumulativeSums[statusObj.name];
+        });
+        groupArray.forEach(function(groupObj) {
+          groupObj.time = cumulativeSums[groupObj.name];
+        });
+      });
+      var totalWakeupTime = inputArray.reduce(function(sum, obj) {
+        return sum + parseInt(obj.wokeup_time);
+      }, 0);
+
+      var jsonData = inputArray[0];
+      var wokeup_time = convertMinutesToHoursAndMinutes(totalWakeupTime);
+    }
+
+
+    const status = jsonData.status;
+
+    const labels = []
+    const GPlabels = {}
+    const xdata = []
+    const backgroundColor = []
+
+
+
+    for (let i = 0; i < status.length; i++) {
+      labels.push(status[i].name);
+      xdata.push(status[i].time);
+      backgroundColor.push(makeColorDarker(status[i].color));
+    }
+
+    var datasetsGP = [{
+      label: 'main',
+      data: xdata,
+      backgroundColor: backgroundColor
+    }]
+    var jsonGP = jsonData.group
+    var jsonGPName = jsonData.group_name
+
+    for (let i = 0; i < jsonGPName.length; i++) {
+      var GPname = []
+      var GPtime = []
+      var GPcolor = []
+      var gp = jsonGPName[i]
+      for (let ii = 0; ii < jsonGP[gp].length; ii++) {
+        GPname.push(jsonGP[gp][ii].name)
+        GPcolor.push(makeColorDarker(jsonGP[gp][ii].color))
+
+        GPtime.push(jsonGP[gp][ii].time)
+      }
+      GPlabels[GPcolor[0]] = GPname
+      datasetsGP.push({
+        label: 'gp',
+        data: GPtime,
+        backgroundColor: GPcolor
+      });
+    }
+    // Get the canvas element
+    var ctx = document.getElementById('myChart').getContext('2d');
+
+    // Define the data for the chart
+    var data = {
+      labels: labels,
+      GPlabels: GPlabels,
+      datasets: datasetsGP
+    };
+
+    const options = {
+      responsive: false,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          labels: {
+            color: fontColor,
+            font: {
+              family: fontFamily,
+              weight: 'bold' // Make the legend font bold
+            }
+          }
+        },
+        title: {
+          display: true,
+          text: title,
+          //fullSize: true,
+          color: fontColor
+        },
+        datalabels: {
+          color: fontColor,
+          font: {
+            family: 'Tahoma',
+            size: 12,
+            weight: 'bold'
+          },
+          formatter: function(value, context) {
+            if (context.datasetIndex === 0) {
+              return '';
+            }
+            if (context.dataset.data[context.dataIndex] === 0) {
+              return '';
+            }
+            return context.chart.data.GPlabels[context.dataset.backgroundColor[0]][context.dataIndex];
+          }
+        },
+        tooltip: {
+          displayColors: false,
+          callbacks: {
+            title: function(context) {
+              var datasetLabel = context[0].dataset.label || '';
+              if (datasetLabel !== 'main') {
+                return false;
+              }
+              return context[0].label;
+            },
+
+            label: function(context) {
+              const dataset = context.dataset;
+              const value = dataset.data[context.dataIndex];
+              const total = dataset.data.reduce((acc, curr) => acc + curr);
+              const percentage = ((value / total) * 100).toFixed(1);
+              var datasetLabel = context.dataset.label || '';
+              if (datasetLabel !== 'main') {
+                //return `${value} min`;
+                return convertMinutesToHoursAndMinutes(value)
+              }
+              return `${percentage}%`;
+            },
+          }
+        },
+        customBeforeDraw: {}
+      },
+      animation: {
+        animateScale: true,
+        animateRotate: true
+      }
+    };
+
+    Chart.register({
+      id: 'customBeforeDraw',
+      beforeDraw: function(chart, args, options) {
+        var ctx = chart.ctx;
+        ctx.save();
+        console.log()
+        var fontSize = 4
+        for (let i = 0; i < chart.$datalabels._datasets.length; i++) {
+          fontSize = fontSize + 3
+        }
+        fontSize = chart.height / fontSize; // Adjust the value to change the font size (smaller value for smaller font)
+        ctx.fillStyle = "#B0BEC5";
+        ctx.font = fontSize + "px sans-serif";
+        ctx.textBaseline = "middle";
+
+        var text = wokeup_time;
+        var textWidth = ctx.measureText(text).width;
+        var textX = (chart.width - textWidth) / 2; // Position the text in the center horizontally
+        var textY = chart.height / 2 + 28 + fontSize / 2;
+        //textY = chart.height / 2 + 28;
+        ctx.fillText(text, textX, textY);
+        ctx.restore();
+
+        // Custom modifications
+        ctx.fillStyle = "red"; // Change the fill color to red
+      }
+    });
+
+
+    // Create the doughnut chart
+    var myChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: data,
+      options: options,
+      plugins: [ChartDataLabels]
+    });
+    Chart.pluginService.register({
+      beforeDraw: function(chart) {
+        var width = chart.chart.width,
+          height = chart.chart.height,
+          ctx = chart.chart.ctx;
+
+        ctx.restore();
+        var fontSize = (height / 114).toFixed(2);
+        ctx.font = fontSize + "em sans-serif";
+        ctx.textBaseline = "middle";
+
+        var text = "75%",
+          textX = Math.round((width - ctx.measureText(text).width) / 2),
+          textY = height / 2;
+
+        ctx.fillText(text, textX, textY);
+        ctx.save();
+      }
+    });
+    </script>
+
+    <script>
+    function toggleDarkMode() {
+      var body = document.body;
+      var darkModeButton = document.getElementById('darkModeButton');
+
+      if (body.classList.contains('dark-mode')) {
+        darkModeButton.innerText = 'D';
+        body.classList.toggle('dark-mode');
+        body.classList.toggle('text-light');
+        localStorage.darkmode = "off"
+      } else {
+        darkModeButton.innerText = 'L';
+        body.classList.toggle('dark-mode');
+        body.classList.toggle('text-light');
+        localStorage.darkmode = "on"
+      }
+    }
+    window.addEventListener('load', function() {
+      var body = document.body;
+      if (typeof(Storage) !== "undefined") {
+        if (localStorage.getItem("darkmode")) {
+          if (localStorage.getItem("darkmode") == "on") {
+            body.classList.toggle('dark-mode');
+            body.classList.toggle('text-light');
+          }
+        } else {
+          if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            body.classList.toggle('dark-mode');
+            body.classList.toggle('text-light');
+          }
+        }
+      }
+      if (body.classList.contains('dark-mode')) {
+        document.getElementById('darkModeButton').innerText = 'L';
+      }
+      var button = document.getElementById("darkModeButton");
+      setTimeout(function() {
+        button.style.visibility = "hidden"; // Show the button after a delay
+      }, 3000); // Delay in milliseconds (3 seconds in this example)
+    });
+    </script>
+    <button id="darkModeButton" class="btn btn-dark" onclick="toggleDarkMode()">D</button>
+  </body>
+
+</html>
