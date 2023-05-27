@@ -390,9 +390,9 @@
             title: function(context) {
               var datasetLabel = context[0].dataset.label || '';
               if (datasetLabel !== 'main') {
-                return ["▼ " + GPlabels[context[0].dataset.backgroundColor[0]][context[0].dataIndex]];
+                return ["▽ " + GPlabels[context[0].dataset.backgroundColor[0]][context[0].dataIndex]];
               }
-              return "⯈ " + context[0].label;
+              return "▷ " + context[0].label;
             },
 
             label: function(context) {
