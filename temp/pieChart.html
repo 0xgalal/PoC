@@ -390,9 +390,9 @@
             title: function(context) {
               var datasetLabel = context[0].dataset.label || '';
               if (datasetLabel !== 'main') {
-                return false;
+                return ["▼ " + GPlabels[context[0].dataset.backgroundColor[0]][context[0].dataIndex]];
               }
-              return context[0].label;
+              return "▶ " + context[0].label;
             },
 
             label: function(context) {
@@ -402,10 +402,10 @@
               const percentage = ((value / total) * 100).toFixed(1);
               var datasetLabel = context.dataset.label || '';
               if (datasetLabel !== 'main') {
-                //return `${value} min`;
-                return convertMinutesToHoursAndMinutes(value)
+                return `${percentage}% (${(convertMinutesToHoursAndMinutes(value))})`;
+                //return convertMinutesToHoursAndMinutes(value)
               }
-              return `${percentage}%`;
+              return `${percentage}% (${(convertMinutesToHoursAndMinutes(value))})`;
             },
           }
         },
