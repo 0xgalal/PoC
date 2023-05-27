@@ -30,7 +30,7 @@
   </head>
 
   <body>
-    <canvas id="myChart"></canvas>
+    <canvas id="pieChart"></canvas>
     <script>
     function deepenColor(hexColor, saturationFactor, lightnessFactor = 0.2) {
       // Remove the leading '#' if present
@@ -339,7 +339,7 @@
       });
     }
     // Get the canvas element
-    var ctx = document.getElementById('myChart').getContext('2d');
+    var ctx = document.getElementById('pieChart').getContext('2d');
 
     // Define the data for the chart
     var data = {
@@ -447,7 +447,7 @@
 
 
     // Create the doughnut chart
-    var myChart = new Chart(ctx, {
+    var pieChart = new Chart(ctx, {
       type: 'doughnut',
       data: data,
       options: options,
