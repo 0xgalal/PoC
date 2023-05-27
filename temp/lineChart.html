@@ -395,13 +395,13 @@
 
                 if (statusGroups.hasOwnProperty(statusName) && context.formattedValue !== "0") {
                   for (let i = 0; i < mainGroup.length; i++) {
-                    statusGroup.push([" ▶ " + mainGroup[i].name + ": " + convertMinutesToHoursAndMinutes(mainGroup[i].time)])
+                    statusGroup.push([" ▸ " + mainGroup[i].name + ": " + convertMinutesToHoursAndMinutes(mainGroup[i].time)])
                   }
 
                   return statusGroup
                 }
 
-                return "▶ " + context.dataset.label + ": " + convertMinutesToHoursAndMinutes(value)
+                return "▸ " + context.dataset.label + ": " + convertMinutesToHoursAndMinutes(value)
               }
             }
           },
