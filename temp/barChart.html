@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
 
@@ -416,7 +417,9 @@
 
               if (statusGroups.hasOwnProperty(statusName) && context.formattedValue !== "0") {
                 for (let i = 0; i < mainGroup.length; i++) {
-                  statusGroup.push([" ▸ " + mainGroup[i].name + ": " + convertMinutesToHoursAndMinutes(mainGroup[i].time)])
+					if (mainGroup[i].time !== 0){
+						statusGroup.push([" ▸ " + mainGroup[i].name + ": " + convertMinutesToHoursAndMinutes(mainGroup[i].time)])
+					}
                 }
                 return statusGroup
               }
