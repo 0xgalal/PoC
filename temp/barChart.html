@@ -196,28 +196,61 @@
 
     var mainArr = []
     var inputArray = []
-
+	var main_status = {"status":[],"date":"","wokeup_time":0,"group":{},"group_name":[]}
+	
+    function isExist(jsonArray,nameToCheck){
+	var arrayInt = false;
+	for (var i = 0; i < jsonArray.length; i++) {
+	  var subArray = jsonArray[i];
+		if (subArray.name === nameToCheck) {
+		  arrayInt = i
+		  break;
+		}
+	}
+	return arrayInt
+	}
     function calculateCumulativeSum(arrays) {
       var result = {};
       arrays.forEach(function(obj) {
-        var statusArray = obj.status;
-        var groupArray = obj.group[obj.group_name[0]];
-        statusArray.forEach(function(statusObj) {
-          if (statusObj.name in result) {
-            result[statusObj.name] += statusObj.time;
-          } else {
-            result[statusObj.name] = statusObj.time;
-          }
-        });
-        groupArray.forEach(function(groupObj) {
-          if (groupObj.name in result) {
-            result[groupObj.name] += groupObj.time;
-          } else {
-            result[groupObj.name] = groupObj.time;
-          }
-        });
+	  var statusArray = obj.status;
+	  statusArray.forEach(function(statusObj) {
+	  var checkName = isExist(main_status['status'],statusObj.name)
+	  if (checkName === false) {
+	  main_status['status'].push({"name": statusObj.name, "color": statusObj.color, "time": statusObj.time});
+	  } else {
+	  main_status['status'][checkName]['time'] =  main_status['status'][checkName]['time'] + statusObj.time
+	  }
+	  });
+	  main_status['wokeup_time'] =  main_status['wokeup_time'] + obj.wokeup_time
+	  var groupNames = obj.group_name;
+	  groupNames.forEach(function(groupObj) {
+	  if (!main_status['group_name'].includes(groupObj)) {
+		main_status['group_name'].push(groupObj)
+	  }
+	  var groupArray = obj['group'][groupObj];
+	  groupArray.forEach(function(groupArrayObj) {
+	  if (main_status['group'].hasOwnProperty(groupObj)) {
+	  var GroupcheckName = isExist(main_status['group'][groupObj],groupArrayObj.name)
+	  if (GroupcheckName === false) {
+		main_status['group'][groupObj].push({
+        "name": groupArrayObj.name,
+        "color": groupArrayObj.color,
+        "time": groupArrayObj.time
+      })
+	  } else {
+	  main_status['group'][groupObj][GroupcheckName]['time'] =  main_status['group'][groupObj][GroupcheckName]['time'] + groupArrayObj.time
+	  }
+	  } else {
+	  main_status['group'][groupObj] = [{
+        "name": groupArrayObj.name,
+        "color": groupArrayObj.color,
+        "time": groupArrayObj.time
+      }]
+	  }
+	  });
+	  });
       });
-      return result;
+      return main_status;
     }
 
 
@@ -268,28 +301,13 @@
         var jsonData = JSON.parse(firstElement);
         type_title = "Monthly"
         title = type_title + " Graph View From: " + JSON.parse(firstElement).date + " To: " + JSON.parse(lastElement).date
-
       }
       for (let i = 0; i < mainArr.length; i++) {
         inputArray.push(JSON.parse(mainArr[i]))
       }
       var cumulativeSums = calculateCumulativeSum(inputArray);
-      inputArray.forEach(function(obj) {
-        var statusArray = obj.status;
-        var groupArray = obj.group[obj.group_name[0]];
-        statusArray.forEach(function(statusObj) {
-          statusObj.time = cumulativeSums[statusObj.name];
-        });
-        groupArray.forEach(function(groupObj) {
-          groupObj.time = cumulativeSums[groupObj.name];
-        });
-      });
-      var totalWakeupTime = inputArray.reduce(function(sum, obj) {
-        return sum + parseInt(obj.wokeup_time);
-      }, 0);
-
-      var jsonData = inputArray[0];
-      var wokeup_time = convertMinutesToHoursAndMinutes(totalWakeupTime);
+      var jsonData = cumulativeSums;
+      var wokeup_time = convertMinutesToHoursAndMinutes(jsonData.wokeup_time);
     }
 
 
