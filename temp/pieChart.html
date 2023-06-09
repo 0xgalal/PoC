@@ -1,9 +1,12 @@
+
+
 <!DOCTYPE html>
 <html>
 
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
     body {
       background-color: white;
@@ -24,13 +27,12 @@
       right: 20px;
     }
     </style>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.3.0/chart.umd.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.js"></script>
   </head>
 
   <body>
-    <canvas id="pieChart"></canvas>
+    <canvas id="barChart"></canvas>
+
     <script>
     function deepenColor(hexColor, saturationFactor, lightnessFactor = 0.2) {
       // Remove the leading '#' if present
@@ -160,13 +162,12 @@
 
     }
 
-    function locationHashChanged() {
-      //alert(location.hash)
+    function convertMinutesToHoursAndMinutes(minutes) {
+      var hours = Math.floor(minutes / 60); // Get the whole number of hours
+      var remainingMinutes = minutes % 60; // Get the remaining minutes
+      return hours + "h " + remainingMinutes + "m"
     }
 
-    //{"status":[{"name":"fun","color":"red","time":"55"}],"title":""}
-
-    window.onhashchange = locationHashChanged;
     var hash = window.location.hash.substr(1);
 
     var result = {};
@@ -196,35 +197,64 @@
 
     var mainArr = []
     var inputArray = []
+	var main_status = {"status":[],"date":"","wokeup_time":0,"group":{},"group_name":[]}
+	function isExist(jsonArray,nameToCheck){
 
+	var arrayInt = false;
+	for (var i = 0; i < jsonArray.length; i++) {
+	  var subArray = jsonArray[i];
+		if (subArray.name === nameToCheck) {
+		  arrayInt = i
+		  break;
+		}
+	}
+	return arrayInt
+	}
     function calculateCumulativeSum(arrays) {
       var result = {};
       arrays.forEach(function(obj) {
-        var statusArray = obj.status;
-        var groupArray = obj.group[obj.group_name[0]];
-        statusArray.forEach(function(statusObj) {
-          if (statusObj.name in result) {
-            result[statusObj.name] += statusObj.time;
-          } else {
-            result[statusObj.name] = statusObj.time;
-          }
-        });
-        groupArray.forEach(function(groupObj) {
-          if (groupObj.name in result) {
-            result[groupObj.name] += groupObj.time;
-          } else {
-            result[groupObj.name] = groupObj.time;
-          }
-        });
+	  var statusArray = obj.status;
+	  statusArray.forEach(function(statusObj) {
+	  var checkName = isExist(main_status['status'],statusObj.name)
+	  if (checkName === false) {
+	  main_status['status'].push({"name": statusObj.name, "color": statusObj.color, "time": statusObj.time});
+	  } else {
+	  main_status['status'][checkName]['time'] =  main_status['status'][checkName]['time'] + statusObj.time
+	  }
+	  });
+	  main_status['wokeup_time'] =  main_status['wokeup_time'] + obj.wokeup_time
+	  var groupNames = obj.group_name;
+	  groupNames.forEach(function(groupObj) {
+	  if (!main_status['group_name'].includes(groupObj)) {
+		main_status['group_name'].push(groupObj)
+	  }
+	  var groupArray = obj['group'][groupObj];
+	  groupArray.forEach(function(groupArrayObj) {
+	  if (main_status['group'].hasOwnProperty(groupObj)) {
+	  var GroupcheckName = isExist(main_status['group'][groupObj],groupArrayObj.name)
+	  if (GroupcheckName === false) {
+		main_status['group'][groupObj].push({
+        "name": groupArrayObj.name,
+        "color": groupArrayObj.color,
+        "time": groupArrayObj.time
+      })
+	  } else {
+	  main_status['group'][groupObj][GroupcheckName]['time'] =  main_status['group'][groupObj][GroupcheckName]['time'] + groupArrayObj.time
+	  }
+	  } else {
+	  main_status['group'][groupObj] = [{
+        "name": groupArrayObj.name,
+        "color": groupArrayObj.color,
+        "time": groupArrayObj.time
+      }]
+	  }
+	  });
+	  });
       });
-      return result;
+      return main_status;
     }
 
-    function convertMinutesToHoursAndMinutes(minutes) {
-      var hours = Math.floor(minutes / 60); // Get the whole number of hours
-      var remainingMinutes = minutes % 60; // Get the remaining minutes
-      return hours + "h " + remainingMinutes + "m"
-    }
+
     if (result.b64) {
       var decodedHash = decodeURIComponent(atob(result.b64));
       var jsonData = JSON.parse(decodedHash);
@@ -272,39 +302,20 @@
         var jsonData = JSON.parse(firstElement);
         type_title = "Monthly"
         title = type_title + " Graph View From: " + JSON.parse(firstElement).date + " To: " + JSON.parse(lastElement).date
-
       }
       for (let i = 0; i < mainArr.length; i++) {
         inputArray.push(JSON.parse(mainArr[i]))
       }
       var cumulativeSums = calculateCumulativeSum(inputArray);
-      inputArray.forEach(function(obj) {
-        var statusArray = obj.status;
-        var groupArray = obj.group[obj.group_name[0]];
-        statusArray.forEach(function(statusObj) {
-          statusObj.time = cumulativeSums[statusObj.name];
-        });
-        groupArray.forEach(function(groupObj) {
-          groupObj.time = cumulativeSums[groupObj.name];
-        });
-      });
-      var totalWakeupTime = inputArray.reduce(function(sum, obj) {
-        return sum + parseInt(obj.wokeup_time);
-      }, 0);
-
-      var jsonData = inputArray[0];
-      var wokeup_time = convertMinutesToHoursAndMinutes(totalWakeupTime);
+      var jsonData = cumulativeSums;
+      var wokeup_time = convertMinutesToHoursAndMinutes(jsonData.wokeup_time);
     }
 
-
     const status = jsonData.status;
-
     const labels = []
     const GPlabels = {}
     const xdata = []
     const backgroundColor = []
-
-
 
     for (let i = 0; i < status.length; i++) {
       labels.push(status[i].name);
@@ -312,47 +323,88 @@
       backgroundColor.push(makeColorDarker(status[i].color));
     }
 
-    var datasetsGP = [{
-      label: 'main',
-      data: xdata,
-      backgroundColor: backgroundColor
-    }]
-    var jsonGP = jsonData.group
-    var jsonGPName = jsonData.group_name
+    for (let ii = 0; ii < status.length; ii++) {
+      var statusName = status[ii].name
+      var statusTime = status[ii].time
+      var statusColor = status[ii].color
 
-    for (let i = 0; i < jsonGPName.length; i++) {
-      var GPname = []
-      var GPtime = []
-      var GPcolor = []
-      var gp = jsonGPName[i]
-      for (let ii = 0; ii < jsonGP[gp].length; ii++) {
-        GPname.push(jsonGP[gp][ii].name)
-        GPcolor.push(makeColorDarker(jsonGP[gp][ii].color))
-
-        GPtime.push(jsonGP[gp][ii].time)
+      if (xdata[statusName + ":" + statusColor]) {
+        xdata[statusName + ":" + statusColor].push(statusTime)
+      } else {
+        xdata[statusName + ":" + statusColor] = ([])
+        xdata[statusName + ":" + statusColor].push(statusTime)
       }
-      GPlabels[GPcolor[0]] = GPname
-      datasetsGP.push({
-        label: 'gp',
-        data: GPtime,
-        backgroundColor: GPcolor
-      });
     }
-    // Get the canvas element
-    var ctx = document.getElementById('pieChart').getContext('2d');
 
-    // Define the data for the chart
+
+    var xdatasets = []
+    for (var key in xdata) {
+      var statusSplit = key.split(":")
+
+      xdatasets.push({
+        label: statusSplit[0],
+        data: xdata[key],
+        backgroundColor: statusSplit[1],
+        borderColor: statusSplit[1],
+        fill: false
+      })
+    }
+    //console.log(xdatasets)
     var data = {
       labels: labels,
-      GPlabels: GPlabels,
-      datasets: datasetsGP
+      datasets: [{
+        label: labels,
+        data: xdata,
+        backgroundColor: backgroundColor, // Bar color
+        borderColor: backgroundColor, // Border color
+        borderWidth: 1 // Border width
+      }]
     };
 
-    const options = {
-      responsive: false,
-      maintainAspectRatio: false,
+
+    // Configuration options for the chart
+    var options = {
+      responsive: true, // Make the chart responsive
+      scales: {
+        y: {
+          beginAtZero: true // Start the y-axis at zero
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            color: gridColor // Grid line color for x-axis
+          },
+          ticks: {
+            font: {
+              family: fontFamily,
+              weight: 'bold' // Make the font bold for the y-axis labels
+            },
+            color: fontColor // Change the font color of the y-axis labels to red
+          }
+        },
+        y: {
+          grid: {
+            color: gridColor // Grid line color for y-axis
+          },
+          ticks: {
+            font: {
+              family: fontFamily,
+              weight: 'bold' // Make the font bold for the y-axis labels
+            },
+            color: fontColor // Change the font color of the y-axis labels to red
+          }
+        }
+      },
       plugins: {
+        title: {
+          display: true,
+          text: title,
+          //fullSize: true,
+          color: fontColor
+        },
         legend: {
+          display: false,
           labels: {
             color: fontColor,
             font: {
@@ -361,55 +413,35 @@
             }
           }
         },
-        title: {
-          display: true,
-          text: title,
-          //fullSize: true,
-          color: fontColor
-        },
-        datalabels: {
-          color: fontColor,
-          font: {
-            family: 'Tahoma',
-            size: 12,
-            weight: 'bold'
-          },
-          formatter: function(value, context) {
-            if (context.datasetIndex === 0) {
-              return '';
-            }
-            if (context.dataset.data[context.dataIndex] === 0) {
-              return '';
-            }
-            return context.chart.data.GPlabels[context.dataset.backgroundColor[0]][context.dataIndex];
-          }
-        },
         tooltip: {
           displayColors: false,
           callbacks: {
-            title: function(context) {
-              var datasetLabel = context[0].dataset.label || '';
-              if (datasetLabel !== 'main') {
-                return ["▼ " + GPlabels[context[0].dataset.backgroundColor[0]][context[0].dataIndex]];
-              }
-              return "▸ " + context[0].label;
+            title: function(tooltipItems, data) {
+              return ''; // Return an empty string to hide the title
             },
-
             label: function(context) {
               const dataset = context.dataset;
               const value = dataset.data[context.dataIndex];
               const total = dataset.data.reduce((acc, curr) => acc + curr);
               const percentage = ((value / total) * 100).toFixed(1);
-              var datasetLabel = context.dataset.label || '';
-              if (datasetLabel !== 'main') {
-                return `${percentage}% (${(convertMinutesToHoursAndMinutes(value))})`;
-                //return convertMinutesToHoursAndMinutes(value)
+              var statusName = (context.dataset.label)[context.dataIndex]
+              var statusGroups = jsonData.group
+              var mainGroup = statusGroups[statusName]
+              var statusGroup = []
+              statusGroup.push(["▼ (" + statusName + ": " + convertMinutesToHoursAndMinutes(context.formattedValue) + ")"])
+
+              if (statusGroups.hasOwnProperty(statusName) && context.formattedValue !== "0") {
+                for (let i = 0; i < mainGroup.length; i++) {
+					if (mainGroup[i].time !== 0){
+						statusGroup.push([" ▸ " + mainGroup[i].name + ": " + convertMinutesToHoursAndMinutes(mainGroup[i].time)])
+					}
+                }
+                return statusGroup
               }
-              return `${percentage}% (${(convertMinutesToHoursAndMinutes(value))})`;
-            },
+              return "▸ " + statusName + ": " + convertMinutesToHoursAndMinutes(value)
+            }
           }
-        },
-        customBeforeDraw: {}
+        }
       },
       animation: {
         animateScale: true,
@@ -417,68 +449,18 @@
       }
     };
 
-    Chart.register({
-      id: 'customBeforeDraw',
-      beforeDraw: function(chart, args, options) {
-        var ctx = chart.ctx;
-        ctx.save();
-        console.log()
-        var fontSize = 7
-        for (let i = 0; i < chart.$datalabels._datasets.length; i++) {
-          fontSize = fontSize + 3
-        }
-        fontSize = chart.height / fontSize; // Adjust the value to change the font size (smaller value for smaller font)
-        ctx.fillStyle = "#B0BEC5";
-        ctx.font = fontSize + "px sans-serif";
-        ctx.textBaseline = "middle";
-
-        var text = wokeup_time;
-        var textWidth = ctx.measureText(text).width;
-        var textX = (chart.width - textWidth) / 2; // Position the text in the center horizontally
-        var textY = chart.height / 2 + 28 + fontSize / 2;
-        //textY = chart.height / 2 + 28;
-        ctx.fillText(text, textX, textY);
-        ctx.restore();
-
-        // Custom modifications
-        ctx.fillStyle = "red"; // Change the fill color to red
-      }
-    });
-
-
-    // Create the doughnut chart
-    var pieChart = new Chart(ctx, {
-      type: 'doughnut',
+    // Create the bar chart
+    var ctx = document.getElementById('barChart').getContext('2d');
+    var barChart = new Chart(ctx, {
+      type: 'bar',
       data: data,
-      options: options,
-      plugins: [ChartDataLabels]
-    });
-    Chart.pluginService.register({
-      beforeDraw: function(chart) {
-        var width = chart.chart.width,
-          height = chart.chart.height,
-          ctx = chart.chart.ctx;
-
-        ctx.restore();
-        var fontSize = (height / 114).toFixed(2);
-        ctx.font = fontSize + "em sans-serif";
-        ctx.textBaseline = "middle";
-
-        var text = "75%",
-          textX = Math.round((width - ctx.measureText(text).width) / 2),
-          textY = height / 2;
-
-        ctx.fillText(text, textX, textY);
-        ctx.save();
-      }
+      options: options
     });
     </script>
-
     <script>
     function toggleDarkMode() {
       var body = document.body;
       var darkModeButton = document.getElementById('darkModeButton');
-
       if (body.classList.contains('dark-mode')) {
         darkModeButton.innerText = 'D';
         body.classList.toggle('dark-mode');
@@ -516,6 +498,7 @@
     });
     </script>
     <button id="darkModeButton" class="btn btn-dark" onclick="toggleDarkMode()">D</button>
+
   </body>
 
 </html>
